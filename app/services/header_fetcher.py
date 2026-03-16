@@ -2,6 +2,7 @@
 
 import logging
 import ssl
+import sys
 import uuid
 from collections.abc import Mapping
 from urllib.parse import urlparse
@@ -35,11 +36,25 @@ class HeaderFetcher:
         get_failed = False
         last_exception_class = ""
         last_exception = ""
+        ssl_context = _create_ssl_context()
+        logger.info(
+            "header_fetch_ssl_setup",
+            extra={
+                "request_id": request_id,
+                "hostname": hostname,
+                "python_version": sys.version.split()[0],
+                "openssl_version": ssl.OPENSSL_VERSION,
+                "ssl_context_class": ssl_context.__class__.__name__,
+                "ca_cert_count": len(ssl_context.get_ca_certs()),
+                "trust_env": False,
+                "http2": False,
+            },
+        )
         async with httpx.AsyncClient(
             headers={"User-Agent": DEFAULT_USER_AGENT},
             timeout=self._timeout,
             follow_redirects=True,
-            verify=_create_ssl_context(),
+            verify=ssl_context,
             trust_env=False,
             http2=False,
         ) as client:
