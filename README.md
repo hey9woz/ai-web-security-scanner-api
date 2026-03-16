@@ -83,7 +83,7 @@ await fetch("https://your-vercel-backend.vercel.app/scan", {
     "Content-Type": "application/json",
   },
   body: JSON.stringify({
-    url: "https://example.com",
+    url: "https://www.google.com",
   }),
 });
 ```
@@ -131,7 +131,7 @@ Scan a URL:
 ```bash
 curl -X POST http://127.0.0.1:8000/scan \
   -H "Content-Type: application/json" \
-  -d '{"url":"https://example.com"}'
+  -d '{"url":"https://www.google.com"}'
 ```
 
 ## Vercel Deployment Note

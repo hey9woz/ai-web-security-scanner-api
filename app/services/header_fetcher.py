@@ -1,9 +1,7 @@
 """HTTP client service for retrieving response headers."""
 
 import logging
-import os
 import ssl
-import sys
 import uuid
 from collections.abc import Mapping
 from urllib.parse import urlparse
@@ -17,13 +15,6 @@ logger = logging.getLogger(__name__)
 
 def _create_ssl_context() -> ssl.SSLContext:
     return ssl.create_default_context(cafile=certifi.where())
-
-
-def _get_ca_cert_count(ssl_context: ssl.SSLContext) -> int:
-    try:
-        return len(ssl_context.get_ca_certs())
-    except NotImplementedError:
-        return -1
 
 
 class UpstreamFetchError(Exception):
@@ -45,50 +36,6 @@ class HeaderFetcher:
         last_exception_class = ""
         last_exception = ""
         ssl_context = _create_ssl_context()
-        verify_paths = ssl.get_default_verify_paths()
-        certifi_cafile = certifi.where()
-        logger.info(
-            "header_fetch_ssl_setup",
-            extra={
-                "request_id": request_id,
-                "hostname": hostname,
-                "python_version": sys.version.split()[0],
-                "openssl_version": ssl.OPENSSL_VERSION,
-                "ssl_context_class": ssl_context.__class__.__name__,
-                "ca_cert_count": _get_ca_cert_count(ssl_context),
-                "trust_env": False,
-                "http2": False,
-                "openssl_cafile_env": verify_paths.openssl_cafile_env,
-                "openssl_cafile": verify_paths.openssl_cafile,
-                "openssl_capath_env": verify_paths.openssl_capath_env,
-                "openssl_capath": verify_paths.openssl_capath,
-                "env_ssl_cert_file": os.getenv("SSL_CERT_FILE", ""),
-                "env_ssl_cert_dir": os.getenv("SSL_CERT_DIR", ""),
-                "env_requests_ca_bundle": os.getenv("REQUESTS_CA_BUNDLE", ""),
-                "env_curl_ca_bundle": os.getenv("CURL_CA_BUNDLE", ""),
-                "certifi_cafile": certifi_cafile,
-            },
-        )
-        print(
-            "header_fetch_ssl_setup "
-            f"request_id={request_id} "
-            f"hostname={hostname} "
-            f"python_version={sys.version.split()[0]} "
-            f"openssl_version={ssl.OPENSSL_VERSION!r} "
-            f"ssl_context_class={ssl_context.__class__.__name__} "
-            f"ca_cert_count={_get_ca_cert_count(ssl_context)} "
-            "trust_env=False "
-            "http2=False "
-            f"openssl_cafile_env={verify_paths.openssl_cafile_env!r} "
-            f"openssl_cafile={verify_paths.openssl_cafile!r} "
-            f"openssl_capath_env={verify_paths.openssl_capath_env!r} "
-            f"openssl_capath={verify_paths.openssl_capath!r} "
-            f"env_ssl_cert_file={os.getenv('SSL_CERT_FILE', '')!r} "
-            f"env_ssl_cert_dir={os.getenv('SSL_CERT_DIR', '')!r} "
-            f"env_requests_ca_bundle={os.getenv('REQUESTS_CA_BUNDLE', '')!r} "
-            f"env_curl_ca_bundle={os.getenv('CURL_CA_BUNDLE', '')!r} "
-            f"certifi_cafile={certifi_cafile!r}"
-        )
         async with httpx.AsyncClient(
             headers={"User-Agent": DEFAULT_USER_AGENT},
             timeout=self._timeout,
@@ -136,16 +83,6 @@ class HeaderFetcher:
                 "last_exception": last_exception,
                 "failure_path": "head_and_get_failed",
             },
-        )
-        print(
-            "header_fetch_exhausted "
-            f"request_id={request_id} "
-            f"hostname={hostname} "
-            f"head_failed={head_failed} "
-            f"get_failed={get_failed} "
-            f"last_exception_class={last_exception_class} "
-            f"last_exception={last_exception!r} "
-            "failure_path=head_and_get_failed"
         )
         raise UpstreamFetchError(
             "Unable to retrieve security headers from the target URL."
