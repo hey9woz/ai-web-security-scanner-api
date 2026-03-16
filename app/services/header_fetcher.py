@@ -8,15 +8,15 @@ import uuid
 from collections.abc import Mapping
 from urllib.parse import urlparse
 
+import certifi
 import httpx
-import truststore
 
 DEFAULT_USER_AGENT = "AI-Web-Security-Scanner/0.1"
 logger = logging.getLogger(__name__)
 
 
 def _create_ssl_context() -> ssl.SSLContext:
-    return truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    return ssl.create_default_context(cafile=certifi.where())
 
 
 def _get_ca_cert_count(ssl_context: ssl.SSLContext) -> int:
@@ -46,6 +46,7 @@ class HeaderFetcher:
         last_exception = ""
         ssl_context = _create_ssl_context()
         verify_paths = ssl.get_default_verify_paths()
+        certifi_cafile = certifi.where()
         logger.info(
             "header_fetch_ssl_setup",
             extra={
@@ -65,6 +66,7 @@ class HeaderFetcher:
                 "env_ssl_cert_dir": os.getenv("SSL_CERT_DIR", ""),
                 "env_requests_ca_bundle": os.getenv("REQUESTS_CA_BUNDLE", ""),
                 "env_curl_ca_bundle": os.getenv("CURL_CA_BUNDLE", ""),
+                "certifi_cafile": certifi_cafile,
             },
         )
         print(
@@ -84,7 +86,8 @@ class HeaderFetcher:
             f"env_ssl_cert_file={os.getenv('SSL_CERT_FILE', '')!r} "
             f"env_ssl_cert_dir={os.getenv('SSL_CERT_DIR', '')!r} "
             f"env_requests_ca_bundle={os.getenv('REQUESTS_CA_BUNDLE', '')!r} "
-            f"env_curl_ca_bundle={os.getenv('CURL_CA_BUNDLE', '')!r}"
+            f"env_curl_ca_bundle={os.getenv('CURL_CA_BUNDLE', '')!r} "
+            f"certifi_cafile={certifi_cafile!r}"
         )
         async with httpx.AsyncClient(
             headers={"User-Agent": DEFAULT_USER_AGENT},
