@@ -1,6 +1,6 @@
-# AI Web Security Scanner API
+# Web Security Scanner API
 
-AI Web Security Scanner API is a portfolio-grade Python backend that scans a target URL for common HTTP security headers and returns a frontend-friendly report.
+Web Security Scanner API is a portfolio-grade Python backend that scans a target URL for common HTTP security headers and returns a frontend-friendly report.
 
 ## Why This Project Exists
 
