@@ -67,6 +67,25 @@ class HeaderFetcher:
                 "env_curl_ca_bundle": os.getenv("CURL_CA_BUNDLE", ""),
             },
         )
+        print(
+            "header_fetch_ssl_setup "
+            f"request_id={request_id} "
+            f"hostname={hostname} "
+            f"python_version={sys.version.split()[0]} "
+            f"openssl_version={ssl.OPENSSL_VERSION!r} "
+            f"ssl_context_class={ssl_context.__class__.__name__} "
+            f"ca_cert_count={_get_ca_cert_count(ssl_context)} "
+            "trust_env=False "
+            "http2=False "
+            f"openssl_cafile_env={verify_paths.openssl_cafile_env!r} "
+            f"openssl_cafile={verify_paths.openssl_cafile!r} "
+            f"openssl_capath_env={verify_paths.openssl_capath_env!r} "
+            f"openssl_capath={verify_paths.openssl_capath!r} "
+            f"env_ssl_cert_file={os.getenv('SSL_CERT_FILE', '')!r} "
+            f"env_ssl_cert_dir={os.getenv('SSL_CERT_DIR', '')!r} "
+            f"env_requests_ca_bundle={os.getenv('REQUESTS_CA_BUNDLE', '')!r} "
+            f"env_curl_ca_bundle={os.getenv('CURL_CA_BUNDLE', '')!r}"
+        )
         async with httpx.AsyncClient(
             headers={"User-Agent": DEFAULT_USER_AGENT},
             timeout=self._timeout,
