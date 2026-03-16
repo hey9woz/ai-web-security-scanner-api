@@ -1,6 +1,7 @@
 """HTTP client service for retrieving response headers."""
 
 import logging
+import os
 import ssl
 import sys
 import uuid
@@ -16,6 +17,13 @@ logger = logging.getLogger(__name__)
 
 def _create_ssl_context() -> ssl.SSLContext:
     return truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+
+
+def _get_ca_cert_count(ssl_context: ssl.SSLContext) -> int:
+    try:
+        return len(ssl_context.get_ca_certs())
+    except NotImplementedError:
+        return -1
 
 
 class UpstreamFetchError(Exception):
@@ -37,6 +45,7 @@ class HeaderFetcher:
         last_exception_class = ""
         last_exception = ""
         ssl_context = _create_ssl_context()
+        verify_paths = ssl.get_default_verify_paths()
         logger.info(
             "header_fetch_ssl_setup",
             extra={
@@ -45,9 +54,17 @@ class HeaderFetcher:
                 "python_version": sys.version.split()[0],
                 "openssl_version": ssl.OPENSSL_VERSION,
                 "ssl_context_class": ssl_context.__class__.__name__,
-                "ca_cert_count": len(ssl_context.get_ca_certs()),
+                "ca_cert_count": _get_ca_cert_count(ssl_context),
                 "trust_env": False,
                 "http2": False,
+                "openssl_cafile_env": verify_paths.openssl_cafile_env,
+                "openssl_cafile": verify_paths.openssl_cafile,
+                "openssl_capath_env": verify_paths.openssl_capath_env,
+                "openssl_capath": verify_paths.openssl_capath,
+                "env_ssl_cert_file": os.getenv("SSL_CERT_FILE", ""),
+                "env_ssl_cert_dir": os.getenv("SSL_CERT_DIR", ""),
+                "env_requests_ca_bundle": os.getenv("REQUESTS_CA_BUNDLE", ""),
+                "env_curl_ca_bundle": os.getenv("CURL_CA_BUNDLE", ""),
             },
         )
         async with httpx.AsyncClient(
