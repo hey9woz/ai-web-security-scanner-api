@@ -1,5 +1,3 @@
-import ssl
-
 import httpx
 import pytest
 
@@ -7,6 +5,7 @@ from app.services.header_fetcher import (
     DEFAULT_USER_AGENT,
     HeaderFetcher,
     UpstreamFetchError,
+    _create_ssl_context,
 )
 
 
@@ -25,7 +24,7 @@ async def test_fetch_uses_successful_head_response() -> None:
         headers={"User-Agent": DEFAULT_USER_AGENT},
         timeout=5.0,
         follow_redirects=True,
-        verify=ssl.create_default_context(),
+        verify=_create_ssl_context(),
         trust_env=False,
     ) as client:
         headers, exception_class, exception_message = await fetcher._request_headers(
@@ -50,11 +49,15 @@ async def test_fetch_falls_back_to_get_when_head_fails(monkeypatch) -> None:
         client: httpx.AsyncClient,
         method: str,
         url: str,
-    ) -> dict[str, str]:
+        *,
+        request_id: str,
+        hostname: str,
+        fallback_attempted: bool,
+    ) -> tuple[dict[str, str], str, str]:
         calls.append(method)
         if method == "HEAD":
-            return {}
-        return {"content-type": "text/html"}
+            return {}, "ConnectTimeout", "timed out"
+        return {"content-type": "text/html"}, "", ""
 
     fetcher = HeaderFetcher()
     monkeypatch.setattr(fetcher, "_request_headers", fake_request_headers)
@@ -73,8 +76,12 @@ async def test_fetch_raises_only_when_head_and_get_fail(
         client: httpx.AsyncClient,
         method: str,
         url: str,
-    ) -> dict[str, str]:
-        return {}
+        *,
+        request_id: str,
+        hostname: str,
+        fallback_attempted: bool,
+    ) -> tuple[dict[str, str], str, str]:
+        return {}, "ConnectError", "certificate verify failed"
 
     fetcher = HeaderFetcher()
     monkeypatch.setattr(fetcher, "_request_headers", fake_request_headers)
@@ -96,7 +103,7 @@ async def test_request_headers_logs_failure(caplog: pytest.LogCaptureFixture) ->
         headers={"User-Agent": DEFAULT_USER_AGENT},
         timeout=5.0,
         follow_redirects=True,
-        verify=ssl.create_default_context(),
+        verify=_create_ssl_context(),
         trust_env=False,
     ) as client:
         with caplog.at_level("WARNING"):

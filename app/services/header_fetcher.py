@@ -7,9 +7,14 @@ from collections.abc import Mapping
 from urllib.parse import urlparse
 
 import httpx
+import truststore
 
 DEFAULT_USER_AGENT = "AI-Web-Security-Scanner/0.1"
 logger = logging.getLogger(__name__)
+
+
+def _create_ssl_context() -> ssl.SSLContext:
+    return truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
 
 
 class UpstreamFetchError(Exception):
@@ -34,7 +39,7 @@ class HeaderFetcher:
             headers={"User-Agent": DEFAULT_USER_AGENT},
             timeout=self._timeout,
             follow_redirects=True,
-            verify=ssl.create_default_context(),
+            verify=_create_ssl_context(),
             trust_env=False,
             http2=False,
         ) as client:
