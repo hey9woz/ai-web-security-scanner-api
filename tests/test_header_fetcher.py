@@ -28,7 +28,7 @@ async def test_fetch_uses_successful_head_response() -> None:
         verify=ssl.create_default_context(),
         trust_env=False,
     ) as client:
-        headers = await fetcher._request_headers(
+        headers, exception_class, exception_message = await fetcher._request_headers(
             client,
             "HEAD",
             "https://example.com",
@@ -38,6 +38,8 @@ async def test_fetch_uses_successful_head_response() -> None:
         )
 
     assert headers == {"content-type": "text/html"}
+    assert exception_class == ""
+    assert exception_message == ""
 
 
 @pytest.mark.anyio
@@ -98,7 +100,7 @@ async def test_request_headers_logs_failure(caplog: pytest.LogCaptureFixture) ->
         trust_env=False,
     ) as client:
         with caplog.at_level("WARNING"):
-            headers = await fetcher._request_headers(
+            headers, exception_class, exception_message = await fetcher._request_headers(
                 client,
                 "HEAD",
                 "https://example.com",
@@ -108,6 +110,8 @@ async def test_request_headers_logs_failure(caplog: pytest.LogCaptureFixture) ->
             )
 
     assert headers == {}
+    assert exception_class == "ConnectTimeout"
+    assert exception_message == "timed out"
     assert caplog.records[0].msg == "header_fetch_failed"
     assert caplog.records[0].request_id == "req-1234"
     assert caplog.records[0].method == "HEAD"

@@ -26,14 +26,19 @@ class HeaderFetcher:
         """Fetch normalized headers, falling back from HEAD to GET when needed."""
         request_id = uuid.uuid4().hex[:8]
         hostname = urlparse(url).hostname or ""
+        head_failed = False
+        get_failed = False
+        last_exception_class = ""
+        last_exception = ""
         async with httpx.AsyncClient(
             headers={"User-Agent": DEFAULT_USER_AGENT},
             timeout=self._timeout,
             follow_redirects=True,
             verify=ssl.create_default_context(),
             trust_env=False,
+            http2=False,
         ) as client:
-            headers = await self._request_headers(
+            headers, exception_class, exception_message = await self._request_headers(
                 client,
                 "HEAD",
                 url,
@@ -43,8 +48,11 @@ class HeaderFetcher:
             )
             if headers:
                 return headers
+            head_failed = True
+            last_exception_class = exception_class
+            last_exception = exception_message
 
-            headers = await self._request_headers(
+            headers, exception_class, exception_message = await self._request_headers(
                 client,
                 "GET",
                 url,
@@ -54,14 +62,31 @@ class HeaderFetcher:
             )
             if headers:
                 return headers
+            get_failed = True
+            last_exception_class = exception_class
+            last_exception = exception_message
 
         logger.error(
             "header_fetch_exhausted",
             extra={
                 "request_id": request_id,
                 "hostname": hostname,
+                "head_failed": head_failed,
+                "get_failed": get_failed,
+                "last_exception_class": last_exception_class,
+                "last_exception": last_exception,
                 "failure_path": "head_and_get_failed",
             },
+        )
+        print(
+            "header_fetch_exhausted "
+            f"request_id={request_id} "
+            f"hostname={hostname} "
+            f"head_failed={head_failed} "
+            f"get_failed={get_failed} "
+            f"last_exception_class={last_exception_class} "
+            f"last_exception={last_exception!r} "
+            "failure_path=head_and_get_failed"
         )
         raise UpstreamFetchError(
             "Unable to retrieve security headers from the target URL."
@@ -76,7 +101,7 @@ class HeaderFetcher:
         request_id: str,
         hostname: str,
         fallback_attempted: bool,
-    ) -> dict[str, str]:
+    ) -> tuple[dict[str, str], str, str]:
         try:
             response = await client.request(method, url)
             response.raise_for_status()
@@ -93,9 +118,9 @@ class HeaderFetcher:
                     "failure_path": f"{method.lower()}_failed",
                 },
             )
-            return {}
+            return {}, exc.__class__.__name__, str(exc)
 
-        return self._normalize_headers(response.headers)
+        return self._normalize_headers(response.headers), "", ""
 
     @staticmethod
     def _normalize_headers(headers: Mapping[str, str]) -> dict[str, str]:
