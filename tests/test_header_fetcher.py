@@ -26,8 +26,16 @@ async def test_fetch_uses_successful_head_response() -> None:
         timeout=5.0,
         follow_redirects=True,
         verify=ssl.create_default_context(),
+        trust_env=False,
     ) as client:
-        headers = await fetcher._request_headers(client, "HEAD", "https://example.com")
+        headers = await fetcher._request_headers(
+            client,
+            "HEAD",
+            "https://example.com",
+            request_id="req-1234",
+            hostname="example.com",
+            fallback_attempted=False,
+        )
 
     assert headers == {"content-type": "text/html"}
 
@@ -71,3 +79,40 @@ async def test_fetch_raises_only_when_head_and_get_fail(
 
     with pytest.raises(UpstreamFetchError):
         await fetcher.fetch("https://example.com")
+
+
+@pytest.mark.anyio
+async def test_request_headers_logs_failure(caplog: pytest.LogCaptureFixture) -> None:
+    async def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectTimeout("timed out")
+
+    transport = httpx.MockTransport(handler)
+    fetcher = HeaderFetcher()
+
+    async with httpx.AsyncClient(
+        transport=transport,
+        headers={"User-Agent": DEFAULT_USER_AGENT},
+        timeout=5.0,
+        follow_redirects=True,
+        verify=ssl.create_default_context(),
+        trust_env=False,
+    ) as client:
+        with caplog.at_level("WARNING"):
+            headers = await fetcher._request_headers(
+                client,
+                "HEAD",
+                "https://example.com",
+                request_id="req-1234",
+                hostname="example.com",
+                fallback_attempted=False,
+            )
+
+    assert headers == {}
+    assert caplog.records[0].msg == "header_fetch_failed"
+    assert caplog.records[0].request_id == "req-1234"
+    assert caplog.records[0].method == "HEAD"
+    assert caplog.records[0].hostname == "example.com"
+    assert caplog.records[0].exception_class == "ConnectTimeout"
+    assert caplog.records[0].exception == "timed out"
+    assert caplog.records[0].fallback_attempted is False
+    assert caplog.records[0].failure_path == "head_failed"
