@@ -27,7 +27,7 @@ There is no database yet, and there is no AI integration yet by design.
 
 Requirements:
 
-- Python 3.11+
+- Python 3.12
 
 Create a virtual environment and install dependencies:
 
@@ -44,6 +44,22 @@ uvicorn app.main:app --reload
 ```
 
 The API will typically be available at `http://127.0.0.1:8000`.
+
+## Docker Setup
+
+Build and run the API with Docker Compose:
+
+```bash
+docker compose up --build app
+```
+
+The API will be available at `http://127.0.0.1:8000`.
+
+Run tests in the container:
+
+```bash
+docker compose run --rm test
+```
 
 ## Run Tests
 
